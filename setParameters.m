@@ -16,10 +16,6 @@ Area.y=n;
 Sinkx=0.5*Area.x;
 Sinky=Sinkx;
 
-% Optimal Election Probability of a node to become cluster head
-% Is not needed for the GCN
-p=0.1;
-
 %%%%%%%%%%%%%%%%%%%%%%%%% Energy Model (all values in Joules)%%%%%%%%%%%
 
 % Initial energy per node (battery capacity in Joules) 
@@ -62,7 +58,6 @@ Model.Areax = Area.x;
 Model.Areay = Area.y;
 Model.Sinkx=Sinkx;
 Model.Sinky=Sinky;
-Model.p=p;
 Model.Eo=Eo;
 Model.ETX=ETX;
 Model.ERX=ERX;
