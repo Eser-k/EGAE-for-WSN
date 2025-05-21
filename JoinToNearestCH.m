@@ -23,7 +23,7 @@ function Sensors=JoinToNearestCH(Sensors,Model,TotalCH)
 n=Model.n;
 m=length(TotalCH);
 
-if(m>1)
+if(m>=1)
     % Preallocate distance matrix: rows=CHs, cols=sensors
     D=zeros(m,n); 
 
@@ -37,7 +37,7 @@ if(m>1)
     end 
     
     % For each sensor, find the nearest CH distance and index
-    [Dmin,idx]=min(D);
+    [Dmin,idx]=min(D, [], 1);
 
     % Assign each sensor to nearest CH or to sink if criteria not met
     for i=1:n       
