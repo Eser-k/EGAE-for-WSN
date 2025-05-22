@@ -111,6 +111,7 @@ alpha = 1e-2;
     
 % the number of distinct clusters (and thus cluster‐heads) 
 % the GAE model should partition the sensor network into
+% Dummy Value
 num_clusters = int32(10);
 
 
@@ -126,9 +127,35 @@ egae_model = egae_module.EGAE(X_py,A_py, num_clusters, alpha, ...
     
 % Pretrain the EGAE model for 200 steps to optimize its autoencoder reconstruction 
 % (initializing the embeddings before the main clustering-driven training)
-egae_model.pretrain(int32(200));    
+egae_model.pretrain(int32(200));   
 
-% Execute the primary EGAE training loop (embedding refinement and cluster indicator updates) 
+% Retrieve the learned node embeddings from the Python model 
+% and convert them into a MATLAB double array
+Z = double(egae_model.embedding.numpy());
+
+% Compute the clustering inertia across k = 1 to n/5 
+% using the learned embeddings Z
+inertias = computeInertia(Z, n/5);
+
+% Visualize the inertia values
+figure('Name','Elbow','NumberTitle','off');
+plot(1:n/5, inertias, '-o');
+xlabel('k');
+ylabel('Inertia');
+title('Elbow Curve');
+grid on;
+
+% Determine the optimal number of clusters by 
+% finding the “elbow” in the inertia curve
+k_opt = findElbow(inertias);
+fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+
+% Update the EGAE model to use the optimal number of clusters
+% determined by the elbow method
+egae_model.num_clusters = int32(k_opt);
+
+% Execute the primary EGAE training loop 
+% (embedding refinement and cluster indicator updates) 
 % and capture the per-iteration loss history
 loss_values = egae_model.run();
 
