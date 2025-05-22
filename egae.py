@@ -203,8 +203,8 @@ class EGAE(tf.keras.Model):
             
             grads = tape.gradient(loss, self.trainable_weights)
             optimizer.apply_gradients(zip(grads, self.trainable_weights))
-        
-        tf.print("Final pretrain loss:", loss)
+
+            print(f"Pretrain step {step+1}/{pretrain_steps} — loss: {loss.numpy():.4f}")
 
 
 def get_laplacian(A):
