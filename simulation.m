@@ -53,14 +53,31 @@ SDP=zeros(1,Model.rmax);
 % Total number of data packets received (at CHs or sink) in each round
 RDP=zeros(1,Model.rmax);    
 
+% Number of sensors still alive at the end of each round
+AliveSensors= zeros(1,Model.rmax);
+
+% Total remaining energy of all sensors at the end of each round
+SumEnergyAllSensor = zeros(1,Model.rmax);
+
+% Average remaining energy per alive sensor at the end of each round
+AvgEnergyAllSensor = zeros(1,Model.rmax);
+
+% Total energy consumed by all sensors during each round
+RoundEnergy = zeros(1,Model.rmax);
+
+% Energy heterogeneity metric 
+% (variance of remaining sensor energies) per round
+Enheraf = zeros(1,Model.rmax);
+
 % Cumulative number of dead nodes at the end of each round
-Sum_DEAD=zeros(1,Model.rmax);
+Count_DeadNodes=zeros(1,Model.rmax);
 
 % Total remaining energy of all sensors at the end of each round
 SumEnergyAllSensor(1) = initEnergy;
 
 % Track number of alive nodes (initially all)
 alive = n;
+AliveSensors(1)= n;
 
 %%%%%%%%%%%%%%%%%% Train EGAE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -380,22 +397,30 @@ for r=1:1:Model.rmax
     end
     
     % Store the count of alive sensors in this round
-    AliveSensors(r)=alive; %#ok
+    AliveSensors(r+1) = alive; 
     
     % Store the total remaining energy across all alive sensors
-    SumEnergyAllSensor(r+1)=SensorEnergy; %#ok
+    SumEnergyAllSensor(r+1)=SensorEnergy; 
     
     % Average energy per alive sensor
-    AvgEnergyAllSensor(r+1)=SensorEnergy/alive; %#ok
-    
-    % Energy consumed per sensor this round 
-    ConsumEnergy(r+1)=(initEnergy-SumEnergyAllSensor(r+1))/n; %#ok
+    AvgEnergyAllSensor(r+1)=SensorEnergy/alive; 
     
     % total energy consumed by all sensors during the current round
-    RoundEnergy(r+1)=SumEnergyAllSensor(r) - SumEnergyAllSensor(r+1); %#ok
+    RoundEnergy(r+1)=SumEnergyAllSensor(r) - SumEnergyAllSensor(r+1); 
     
+    % Compute the total squared deviation of each alive sensor’s 
+    % energy from the round’s mean
+    En=0;
+    for i=1:n
+        if Sensors(i).E>0
+            En=En+(Sensors(i).E-AvgEnergyAllSensor(r+1))^2;
+        end
+    end
+
+    Enheraf(r+1)=En/alive; 
+
     deadNum = sum(energyVec<=0);
-    Sum_DEAD(r+1) = deadNum;
+    Count_DeadNodes(r+1) = deadNum;
 
     % Save r'th period when the first node dies
     if (deadNum>=1)      
@@ -405,24 +430,94 @@ for r=1:1:Model.rmax
         end  
     end
 
-    % Compute the total squared deviation of each alive sensor’s 
-    % energy from the round’s mean
-    % En=0;
-    % for i=1:n
-    %     if Sensors(i).E>0
-    %         En=En+(Sensors(i).E-AvgEnergyAllSensor(r+1))^2;
-    %     end
-    % end
-    % 
-    % Enheraf(r+1)=En/alive; %#ok
-     
-    
+    if alive <= n/2 && ~exist('half_dead','var')
+        half_dead = r;
+    end
+
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
    % If all sensor nodes are dead, record the final round 
    % and exit the loop
    if(n==deadNum)
-       lastPeriod=r;  
+       lastRound=r;  
        break;
    end
   
 end
-    
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Display the round when the first sensor node died
+fprintf("First node death:  %d\n", first_dead);
+
+% Display the round when half of the sensor nodes have died
+fprintf("Half nodes dead:    %d\n", half_dead);
+
+% Display the total number of rounds until all sensor nodes have died
+fprintf("Network Lifetime:   %d\n", lastRound);
+
+% Create an index vector for selecting rounds 
+% from 1 up to the last completed round
+idx = 1:(lastRound+1);
+
+% Truncate each metrics array to include 
+% only the data for the completed rounds
+SRP                = SRP(idx);
+RRP                = RRP(idx);
+SDP                = SDP(idx);
+RDP                = RDP(idx);
+AliveSensors       = AliveSensors(idx);
+SumEnergyAllSensor = SumEnergyAllSensor(idx);
+AvgEnergyAllSensor = AvgEnergyAllSensor(idx);
+RoundEnergy        = RoundEnergy(idx);
+Enheraf            = Enheraf(idx);
+
+% Convert each metric array into a column vector 
+SRP               = SRP(:);
+RRP               = RRP(:);
+SDP               = SDP(:);
+RDP               = RDP(:);
+AliveSensors      = AliveSensors(:);
+SumEnergyAllSensor= SumEnergyAllSensor(:);
+AvgEnergyAllSensor= AvgEnergyAllSensor(:);
+RoundEnergy       = RoundEnergy(:);
+Enheraf           = Enheraf(:);
+
+% Generate a column vector of round indices from 0 up to the last round
+Round = (0:lastRound)';   
+
+% Combine all per-round metrics into a single table for further analysis
+Stats = table( ...
+    Round, ...
+    SRP, ...
+    RRP, ...
+    SDP, ...
+    RDP, ...
+    AliveSensors, ...
+    SumEnergyAllSensor, ...
+    AvgEnergyAllSensor, ...
+    RoundEnergy, ...
+    Enheraf ...
+);
+
+% Extract the 'Round' column from the Stats table into a standalone vector
+rounds  = Stats.Round;
+
+% Get the names of all metric columns (excluding the first 'Round' column)
+metrics = Stats.Properties.VariableNames(2:end);  
+
+% Extract numeric values for all metrics (exclude the first 'Round' column)
+data   = Stats{:,2:end};   
+
+% Transpose the data matrix so that metrics become rows 
+% and rounds become columns
+data_T = data.';      
+
+% Construct a table from the transposed data, using each metric name 
+% as a row label and “Round <n>” as the column headers corresponding to 
+% each round number
+T = array2table( data_T, 'RowNames', metrics, ...
+    'VariableNames', compose("Round %d", rounds));
+
+% Export the table to a CSV file
+writetable(T, 'stats_by_metric.csv', 'WriteRowNames', true);
