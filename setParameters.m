@@ -37,7 +37,7 @@ do=sqrt(Efs/Emp);
 %%%%%%%%%%%%%%%%%%%%%%%%% Run Time Parameters %%%%%%%%%%%%%%%%%%%%%%%%%
 
 % maximum number of rounds
-rmax=5000;
+rmax=2000;
 
 % Size of each data packet payload in bits sent during steady-state phase
 DpacketLen=4000; 
