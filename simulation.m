@@ -175,6 +175,20 @@ xlabel('Iteration');
 ylabel('Loss');
 title('EGAE Training Loss');
 grid on;
+
+% Retrieve cluster assignments from the Python model as a py.list
+labels_py = egae_model.clustering();
+
+% Convert the Python list of labels into a MATLAB cell array
+labels_list = labels_py.tolist();
+labels_cell = cell(labels_list); 
+
+% Cast each cell element from Python numeric to MATLAB double
+labels_num  = cellfun(@double, labels_cell);
+
+% Transform into an n×1 int32 vector and shift from 0-based (Python) 
+% to 1-based (MATLAB) indexing
+cluster_labels = int32(labels_num(:)) + 1;
     
 % Generate a palette of distinct colors (one per cluster) 
 cmap = lines(num_clusters);
@@ -244,21 +258,7 @@ for r=1:1:Model.rmax
     %   - Set distance to CH to ∞ so the closest CH will overwrite it
     Sensors=resetSensors(Sensors,Model);
     
-%%%%%%%%%%%%%%%%%%%%% cluster head election %%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % Retrieve cluster assignments from the Python model as a py.list
-    labels_py = egae_model.clustering();
-
-    % Convert the Python list of labels into a MATLAB cell array
-    labels_list = labels_py.tolist();
-    labels_cell = cell(labels_list); 
-
-    % Cast each cell element from Python numeric to MATLAB double
-    labels_num  = cellfun(@double, labels_cell);
-
-    % Transform into an n×1 int32 vector and shift from 0-based (Python) 
-    % to 1-based (MATLAB) indexing
-    cluster_labels = int32(labels_num(:)) + 1; 
+%%%%%%%%%%%%%%%%%%%%% cluster head election %%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     % Use the computed cluster_labels to select one alive sensor per cluster 
     % (the one with highest remaining energy) as the cluster head.
