@@ -107,7 +107,7 @@ X_py = py.numpy.array(single(X));
 % weighting coefficient for the clustering regularization term 
 % (balances the importance of embedding-to-cluster alignment 
 %  against the graph reconstruction loss)
-alpha = 1e-2;
+alpha = 100;
     
 % the number of distinct clusters (and thus cluster‐heads) 
 % the GAE model should partition the sensor network into
@@ -123,7 +123,7 @@ num_clusters = int32(10);
 %   - max_epoch:  number of outer training epochs 
 %   - max_iter:   number of inner training iterations per epoch 
 egae_model = egae_module.EGAE(X_py,A_py, num_clusters, alpha, ...
-    pyargs('max_epoch', int32(10), 'max_iter', int32(50)));
+    pyargs('max_epoch', int32(40), 'max_iter', int32(10)));
     
 % Pretrain the EGAE model for 200 steps to optimize its autoencoder reconstruction 
 % (initializing the embeddings before the main clustering-driven training)
@@ -135,11 +135,12 @@ Z = double(egae_model.embedding.numpy());
 
 % Compute the clustering inertia across k = 1 to n/5 
 % using the learned embeddings Z
-inertias = computeInertia(Z, n/5);
+kmax = int32(n/5);
+inertias = computeInertia(Z, kmax);
 
 % Visualize the inertia values
 figure('Name','Elbow','NumberTitle','off');
-plot(1:n/5, inertias, '-o');
+plot(1:kmax, inertias, '-o');
 xlabel('k');
 ylabel('Inertia');
 title('Elbow Curve');
@@ -153,6 +154,7 @@ fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
 % Update the EGAE model to use the optimal number of clusters
 % determined by the elbow method
 egae_model.num_clusters = int32(k_opt);
+num_clusters = k_opt;
 
 % Execute the primary EGAE training loop 
 % (embedding refinement and cluster indicator updates) 
@@ -191,7 +193,7 @@ labels_num  = cellfun(@double, labels_cell);
 cluster_labels = int32(labels_num(:)) + 1;
     
 % Generate a palette of distinct colors (one per cluster) 
-cmap = lines(num_clusters);
+cmap = jet(num_clusters);
 
 % Create a new figure window named “Sensor Network” 
 simFig = figure('Name','Sensor Network','NumberTitle','off');
