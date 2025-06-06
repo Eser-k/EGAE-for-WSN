@@ -19,7 +19,7 @@ function X = createFeatureMatrix(Sensors, Model)
     n = Model.n;        
     
     % radius for neighbor connectivity
-    adjacencyDistance = 20;
+    adjacencyDistance = 30;
     
     % preallocate feature matrix (n rows, 5 columns)
     X = zeros(n, 5);    

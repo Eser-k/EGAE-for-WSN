@@ -11,7 +11,7 @@ function A = createAdjacencyMatrix(Sensors, Model)
     % number of sensor nodes
     n = Model.n;  
 
-    adjacencyDistance = 20;        
+    adjacencyDistance = 30;        
 
     % allocate n×n matrix
     A = zeros(n, n);     
