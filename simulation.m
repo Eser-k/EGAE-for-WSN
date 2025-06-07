@@ -208,6 +208,8 @@ hold(axSim,'on');
 % and store the handle for later updates
 hTitle = title(axSim, 'Round=0, Dead nodes=0','FontSize',12,'FontWeight','bold');
 
+fis = readfis('CH_Selection.fis');
+
 %%%%%%%%%%%%%%%%%%% Start Simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Initialize global counters for packet statistics
@@ -264,7 +266,7 @@ for r=1:1:Model.rmax
 
     % Use the computed cluster_labels to select one alive sensor per cluster 
     % (the one with highest remaining energy) as the cluster head.
-    [TotalCH,Sensors]=selectCH(Sensors,Model,cluster_labels); 
+    [TotalCH,Sensors]=selectCH(Sensors,Model,cluster_labels,fis); 
     
 %%%%%%%%%%%%%%%%%%%% plot sensors %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
