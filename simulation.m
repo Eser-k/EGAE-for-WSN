@@ -13,7 +13,7 @@ warning off all;
 %% Create sensor nodes, Set Parameters and Create Energy Model
 
 %%%%%%%%%%%%%%%% Initial Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n=100;                          % Number of Nodes in the field
+n=200;                          % Number of Nodes in the field
 [Area,Model]=setParameters(n);  % Set Parameters Sensors and Network
     
 %%%%%%%%%%%%%%%% Configuration of the Sensors %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,64 +79,10 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% Train EGAE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Ensure Python integration is available and initialized
-pe = pyenv;
-
-if ~strcmp(pe.Status, 'Loaded')
-    error('Python environment is not loaded. Please configure pyenv.');
-end
-
-egae_module = py.importlib.import_module('egae');
-
-% Create adjacency matrix of the sensor network graph
-A = createAdjacencyMatrix(Sensors, Model);  
-
-% single: converts 64 bit floating point to 32 bit floating point
-% Convert MATLAB array to single-precision NumPy array
-A_py = py.numpy.array(single(A));
-
-% Create feature Matrix of the sensors
-X = createFeatureMatrix(Sensors, Model);
-
-% single: converts 64 bit floating point to 32 bit floating point
-% Convert MATLAB array to single-precision NumPy array
-X_py = py.numpy.array(single(X));
-
-% weighting coefficient for the clustering regularization term 
-% (balances the importance of embedding-to-cluster alignment 
-%  against the graph reconstruction loss)
-alpha = 100;
-    
-% the number of distinct clusters (and thus cluster‐heads) 
-% the GAE model should partition the sensor network into
-% Dummy Value
-num_clusters = int32(10);
-
-
-% Create an instance of the EGAE model:
-%   - X_py:       node feature matrix (NumPy array)
-%   - A_py:       graph adjacency matrix (NumPy array)
-%   - num_clusters: number of clusters to find
-%   - alpha:      regularization/trade-off parameter
-%   - max_epoch:  number of outer training epochs 
-%   - max_iter:   number of inner training iterations per epoch 
-egae_model = egae_module.EGAE(X_py,A_py, num_clusters, alpha, ...
-    pyargs('max_epoch', int32(40), 'max_iter', int32(10)));
-    
-% Pretrain the EGAE model for 200 steps to optimize its autoencoder reconstruction 
-% (initializing the embeddings before the main clustering-driven training)
-egae_model.pretrain(int32(200));   
-
-% Retrieve the learned node embeddings from the Python model 
-% and convert them into a MATLAB double array
-Z = double(egae_model.embedding.numpy());
-
-% Compute the clustering inertia across k = 1 to n/5 
-% using the learned embeddings Z
+%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+positons = createFeatureMatrix(Sensors,Model);
 kmax = int32(n/5);
-inertias = computeInertia(Z, kmax);
+inertias = computeInertia(positons, kmax);
 
 % Visualize the inertia values
 figure('Name','Elbow','NumberTitle','off');
@@ -151,47 +97,9 @@ grid on;
 k_opt = findElbow(inertias);
 fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
 
-% Update the EGAE model to use the optimal number of clusters
-% determined by the elbow method
-egae_model.num_clusters = int32(k_opt);
 num_clusters = k_opt;
+[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
 
-% Execute the primary EGAE training loop 
-% (embedding refinement and cluster indicator updates) 
-% and capture the per-iteration loss history
-loss_values = egae_model.run();
-
-% Convert the NumPy array of loss values into a native Python list
-loss_list = loss_values.tolist();    
-
-% Convert the Python list into a MATLAB cell array 
-loss_cell = cell(loss_list);      
-
-% Cast each cell value from Python numeric type to MATLAB double
-loss_history = cellfun(@double, loss_cell);
-
-% Plot the loss history over iterations
-lossFig = figure('Name','EGAE Training Loss','NumberTitle','off');
-plot(loss_history,'LineWidth',1.5);
-xlabel('Iteration'); 
-ylabel('Loss');
-title('EGAE Training Loss');
-grid on;
-
-% Retrieve cluster assignments from the Python model as a py.list
-labels_py = egae_model.clustering();
-
-% Convert the Python list of labels into a MATLAB cell array
-labels_list = labels_py.tolist();
-labels_cell = cell(labels_list); 
-
-% Cast each cell element from Python numeric to MATLAB double
-labels_num  = cellfun(@double, labels_cell);
-
-% Transform into an n×1 int32 vector and shift from 0-based (Python) 
-% to 1-based (MATLAB) indexing
-cluster_labels = int32(labels_num(:)) + 1;
-    
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
 
