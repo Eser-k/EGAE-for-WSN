@@ -13,13 +13,13 @@ warning off all;
 %% Create sensor nodes, Set Parameters and Create Energy Model
 
 %%%%%%%%%%%%%%%% Initial Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n=200;                          % Number of Nodes in the field
+n=100;                          % Number of Nodes in the field
 [Area,Model]=setParameters(n);  % Set Parameters Sensors and Network
     
 %%%%%%%%%%%%%%%% Configuration of the Sensors %%%%%%%%%%%%%%%%%%%%%%%%%
     
 % Create a random scenario
-CreateRandomSen(Model,Area);  
+% CreateRandomSen(Model,Area);  
 
 % Load sensor Location
 load Locations
