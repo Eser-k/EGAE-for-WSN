@@ -79,12 +79,23 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-positions = createFeatureMatrix(Sensors, Model);
+hdb = py.importlib.import_module('hdbscan');
+np  = py.importlib.import_module('numpy');
 
-cluster_labels = dbscan(positions, 10, 4);
+positions = createFeatureMatrix(Sensors, Model);
+positions_py = np.array(positions);
+
+clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(4)));
+clusterer.fit(positions_py);
+
+labels_py = py.getattr(clusterer, 'labels_');    
+labels_list = labels_py.tolist();                 
+labels_cell = cell(labels_list);                  
+cluster_labels = cellfun(@double, labels_cell);   
+cluster_labels = cluster_labels'; 
 
 valid_mask = (cluster_labels ~= -1);
-unique_ids = unique(cluster_labels(valid_mask));
+unique_ids = unique(cluster_labels(valid_mask)) + 1;
 
 centroids = zeros(numel(unique_ids), 2);
 
@@ -101,7 +112,10 @@ for j = noise_idx'
     cluster_labels(j) = unique_ids(minpos);
 end
 
+cluster_labels = cluster_labels + 1;
+
 num_clusters = numel(unique_ids);
+
 cmap = jet(num_clusters);
 
 % Create a new figure window named “Sensor Network” 
