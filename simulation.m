@@ -19,7 +19,7 @@ n=100;                          % Number of Nodes in the field
 %%%%%%%%%%%%%%%% Configuration of the Sensors %%%%%%%%%%%%%%%%%%%%%%%%%
     
 % Create a random scenario
-CreateRandomSen(Model,Area);  
+% CreateRandomSen(Model,Area);  
 
 % Load sensor Location
 load Locations
