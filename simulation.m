@@ -83,25 +83,20 @@ positions = createFeatureMatrix(Sensors, Model);
 
 cluster_labels = dbscan(positions, 10, 4);
 
-valid_mask = (cluster_labels ~= -1);
-unique_ids = unique(cluster_labels(valid_mask));
-
-centroids = zeros(numel(unique_ids), 2);
-
-for i = 1:numel(unique_ids)
-    members = (cluster_labels == unique_ids(i));
-    centroids(i,:) = mean(positions(members, :), 1);
-end
-
+valid_idx = find(cluster_labels ~= -1);
 noise_idx = find(cluster_labels == -1);
 
 for j = noise_idx'
-    dists = sqrt(sum((centroids - positions(j,:)).^2, 2));
-    [~, minpos] = min(dists);
-    cluster_labels(j) = unique_ids(minpos);
+    diffs  = positions(valid_idx, :) - positions(j, :);
+    dists2 = sum(diffs.^2, 2);         
+    [~, minloc] = min(dists2);         
+    
+    cluster_labels(j) = cluster_labels(valid_idx(minloc));
 end
 
+unique_ids = unique(cluster_labels);
 num_clusters = numel(unique_ids);
+
 cmap = jet(num_clusters);
 
 % Create a new figure window named “Sensor Network” 
