@@ -85,7 +85,7 @@ np  = py.importlib.import_module('numpy');
 positions = createFeatureMatrix(Sensors, Model);
 positions_py = np.array(positions);
 
-clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(4)));
+clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(4), 'min_samples', int32(4)));
 clusterer.fit(positions_py);
 
 labels_py = py.getattr(clusterer, 'labels_');    
@@ -94,26 +94,20 @@ labels_cell = cell(labels_list);
 cluster_labels = cellfun(@double, labels_cell);   
 cluster_labels = cluster_labels'; 
 
-valid_mask = (cluster_labels ~= -1);
-unique_ids = unique(cluster_labels(valid_mask)) + 1;
-
-centroids = zeros(numel(unique_ids), 2);
-
-for i = 1:numel(unique_ids)
-    members = (cluster_labels == unique_ids(i));
-    centroids(i,:) = mean(positions(members, :), 1);
-end
-
+valid_idx = find(cluster_labels ~= -1);
 noise_idx = find(cluster_labels == -1);
 
 for j = noise_idx'
-    dists = sqrt(sum((centroids - positions(j,:)).^2, 2));
-    [~, minpos] = min(dists);
-    cluster_labels(j) = unique_ids(minpos);
+    diffs  = positions(valid_idx, :) - positions(j, :);
+    dists2 = sum(diffs.^2, 2);         
+    [~, minloc] = min(dists2);         
+    
+    cluster_labels(j) = cluster_labels(valid_idx(minloc));
 end
 
 cluster_labels = cluster_labels + 1;
 
+unique_ids = unique(cluster_labels);
 num_clusters = numel(unique_ids);
 
 cmap = jet(num_clusters);
