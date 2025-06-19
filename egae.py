@@ -24,7 +24,7 @@ class EGAE(tf.keras.Model):
 
         # Layer-Architecture
         if hidden_dims is None:
-            hidden_dims = [16, 8]
+            hidden_dims = [32, 16]
         self.hidden_dims = hidden_dims
 
         # Activation Function
