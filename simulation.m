@@ -79,10 +79,11 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
+%%%%%%%%%%%%%%%%%% cluster with hierarchical clustering  %%%%%%%%%%%%%%%%%%
+positions = createFeatureMatrix(Sensors,Model);
 kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+
+inertias = computeInertia(positions, kmax);
 
 % Visualize the inertia values
 figure('Name','Elbow','NumberTitle','off');
@@ -94,11 +95,20 @@ grid on;
 
 % Determine the optimal number of clusters by 
 % finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+num_clusters = findElbow(inertias);
+fprintf('Optimal number of clusters (Elbow): %d\n', num_clusters);
 
-num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+
+distances = pdist(positions);
+Z = linkage(distances,"ward");
+
+figure('Name','Dendrogram','NumberTitle','off');
+dendrogram(Z);
+xlabel('Sensor');
+ylabel('Abstand');
+title('Hierarchisches Clustering (ward)');
+
+cluster_labels = cluster(Z, 'maxclust', num_clusters); 
 
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
