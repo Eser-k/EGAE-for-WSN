@@ -79,26 +79,44 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
-kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+%%%%%%%%%%%%%%%%%% cluster with GMM  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+positions = createFeatureMatrix(Sensors,Model);
 
-% Visualize the inertia values
-figure('Name','Elbow','NumberTitle','off');
-plot(1:kmax, inertias, '-o');
+kMin = 1;
+kMax = 10;      
+options = statset('MaxIter',500,'Display','off');
+
+silScores = zeros(kMax,1);
+GMModels  = cell(kMax,1);
+
+for k = kMin:kMax
+    GMModels{k} = fitgmdist( ...
+        positions, k, ...
+        'Options', options, ...
+        'Replicates', 10, ...
+        'RegularizationValue', 1e-5 );
+    
+    labels = cluster(GMModels{k}, positions);
+    
+    sil = silhouette(positions, labels);
+    
+    silScores(k) = mean(sil);
+end
+
+figure;
+plot(kMin:kMax, silScores(kMin:kMax), '-o', 'LineWidth',1.5);
 xlabel('k');
-ylabel('Inertia');
-title('Elbow Curve');
+ylabel('Durchschnittlicher Silhouette-Score');
+title('Durchschnittlicher Silhouette-Score');
 grid on;
 
-% Determine the optimal number of clusters by 
-% finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+[~, kOpt] = max(silScores(kMin:kMax));
+fprintf('Optimaler Cluster-Anzahl via Silhouette: k = %d\n', kOpt);
 
-num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+bestGMM = GMModels{kOpt};
+cluster_labels = cluster(bestGMM, positions);
+
+num_clusters = kOpt;
 
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
