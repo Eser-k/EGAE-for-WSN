@@ -98,17 +98,17 @@ grid on;
 num_clusters = findElbow(inertias);
 fprintf('Optimal number of clusters (Elbow): %d\n', num_clusters);
 
-
 distances = pdist(positions);
 Z = linkage(distances,"ward");
 
+cluster_labels = cluster(Z, 'maxclust', num_clusters); 
+
 figure('Name','Dendrogram','NumberTitle','off');
-dendrogram(Z);
+dendrogram(Z,0, ClusterIndices=cluster_labels, ...
+    ShowMarkers=true,ShowCut=true);
 xlabel('Sensor');
 ylabel('Abstand');
 title('Hierarchisches Clustering (ward)');
-
-cluster_labels = cluster(Z, 'maxclust', num_clusters); 
 
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
