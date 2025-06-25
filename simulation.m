@@ -82,7 +82,7 @@ AliveSensors(1)= n;
 %%%%%%%%%%%%%%%%%% cluster with GMM  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 positions = createFeatureMatrix(Sensors,Model);
 
-kMin = 1;
+kMin = 2;
 kMax = 10;      
 options = statset('MaxIter',500,'Display','off');
 
@@ -110,7 +110,9 @@ ylabel('Durchschnittlicher Silhouette-Score');
 title('Durchschnittlicher Silhouette-Score');
 grid on;
 
-[~, kOpt] = max(silScores(kMin:kMax));
+[~, idxMax] = max(silScores(kMin:kMax));   
+kOpt = idxMax + kMin - 1; 
+
 fprintf('Optimaler Cluster-Anzahl via Silhouette: k = %d\n', kOpt);
 
 bestGMM = GMModels{kOpt};
