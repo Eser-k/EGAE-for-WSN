@@ -104,8 +104,19 @@ Z = linkage(distances,"ward");
 cluster_labels = cluster(Z, 'maxclust', num_clusters); 
 
 figure('Name','Dendrogram','NumberTitle','off');
-dendrogram(Z,0, ClusterIndices=cluster_labels, ...
+h = dendrogram(Z,0, ClusterIndices=cluster_labels, ...
     ShowMarkers=true,ShowCut=true);
+fs = 15;                         
+
+% Achsenbeschriftungen und Tick-Labels anpassen
+set(gca,'FontSize',fs)
+
+% Alle Text-Objekte (u. a. Knotentexte der Cluster) anpassen
+set(findall(gcf,'Type','text'),'FontSize',fs)
+
+% Optional: Linienbreite etwas erhöhen, damit der Baum im Druck klarer wirkt
+set(h,'LineWidth',1.4)
+
 xlabel('Sensor');
 ylabel('Abstand');
 title('Hierarchisches Clustering (ward)');
