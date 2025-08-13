@@ -61,13 +61,16 @@ function Sensors=SendReceivePackets(Sensors,Model,Sender,PacketType,Receiver)
       
    end
    
-   %% Reception energy consumption
-    % Every receiver pays ERX + EDA per packet
-   for j=1:length( Receiver)
-        Sensors(Receiver(j)).E =Sensors(Receiver(j)).E- ...
-            ((Model.ERX + Model.EDA)*PacketSize);
-         
-   end   
+    %% Reception energy consumption
+    isSenderCH = all(arrayfun(@(s) Sensors(s).type=='C', Sender));
+    
+    for j = 1:length(Receiver)
+        if isSenderCH
+            Sensors(Receiver(j)).E = Sensors(Receiver(j)).E - (Model.ERX * PacketSize);
+        else
+            Sensors(Receiver(j)).E = Sensors(Receiver(j)).E - ((Model.ERX + Model.EDA) * PacketSize);
+        end
+    end  
    
    for i=1:length(Sender)
        for j=1:length(Receiver)

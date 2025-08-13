@@ -1,4 +1,4 @@
-function d = distances(X)
+function d = pairwiseDistancesEuclid(X)
 
 %% Developed by Eser Kayali
  % eser-k@web.de

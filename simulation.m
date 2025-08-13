@@ -26,7 +26,7 @@ load Locations
     
 Sensors=ConfigureSensors(Model,n,X,Y);
     
-%%%%%%%%%%%%%%%%% Initialization of the sarameters %%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%% Initialization of the parameters %%%%%%%%%%%%%%%%%%%%
     
 % Flag indicating whether the first node death has occurred 
 % (0 = not yet, 1 = yes)
@@ -185,7 +185,15 @@ for r=1:1:Model.rmax
     axes(axSim); %#ok
 
     % Clear those axes, removing any existing points or lines
-    cla(axSim);                   
+    cla(axSim); 
+
+    set(axSim, ...
+    'XLim', [0 Model.Areax], ...
+    'YLim', [0 Model.Areay], ...
+    'XLimMode', 'manual', ...
+    'YLimMode', 'manual', ...
+    'DataAspectRatio', [1 1 1], ...      
+    'PlotBoxAspectRatioMode', 'auto'); 
     
     % Build a column vector of each sensor’s remaining energy
     energyVec = [Sensors(1:n).E]';
@@ -237,7 +245,7 @@ for r=1:1:Model.rmax
     
     % Ensure the axes have equal length units and make the 
     % plot box square (1:1 aspect ratio)
-    axis square;
+    axis square;                        
 
     % Update the figure title to show the current round number 
     % and dead node count
@@ -257,7 +265,6 @@ for r=1:1:Model.rmax
     
     % Sensors join the nearest clusterhead 
     Sensors=JoinToNearestCH(Sensors,Model,TotalCH);
-
  %%%%%%%%%%%%%%%%%%%% Plot links from non-CH nodes to their cluster 
 % heads after setup phase %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -297,16 +304,95 @@ for r=1:1:Model.rmax
             
         end 
     end
+
+    %%%%%%%%%%%Create Paths for multi-hop%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Once each cluster head has aggregated data from its members, 
-    % it forwards the consolidated packet directly to the sink
-    for i=1:length(TotalCH)
-            
-        Receiver=n+1;                % ID of the sink (base station)
-        Sender=TotalCH(i).id;        % ID of the i-th cluster head 
-        Sensors=SendReceivePackets(Sensors,Model,Sender,'Data',Receiver);     
+    G = createCHGraph(Sensors, Model, TotalCH);
+    
+    W = G.W; 
+    m = size(W,1);
+    
+    [i,j] = find(triu(isfinite(W),1));
+    w = W(sub2ind([m m], i, j));
+    
+    MG = graph(i, j, w);  % MATLAB Graphobject
+    
+    s = G.sinkIndex;
+    
+    % Dijkstra starting from Base Station
+    [Tree,distances] = shortestpathtree(MG, s, 'Method','positive');  
+    
+    % Plot Paths
+    figure(simFig); axes(axSim); hold(axSim,'on');
+    pTree = plot(Tree, ...
+        'XData', G.pos(:,1), 'YData', G.pos(:,2), ...
+        'Parent', axSim, ...
+        'EdgeColor', [0 0.5 1], 'LineWidth', 1.2);
+
+    set(axSim, ...
+    'XLim', [0 Model.Areax], ...
+    'YLim', [0 Model.Areay], ...
+    'XLimMode', 'manual', ...
+    'YLimMode', 'manual', ...
+    'DataAspectRatio', [1 1 1], ...      
+    'PlotBoxAspectRatioMode', 'auto');
+    
+    pause(1);
+    
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    [~, ~, Evec] = shortestpathtree(MG, s, 'Method','positive', 'OutputForm','vector');
+
+    m = numnodes(MG);
+    parent = zeros(1,m);     
+    endNodes = MG.Edges.EndNodes;  % Kantenliste
+    
+    for v = 1:m
+        
+        e = Evec(v);  % Index der Kante, die v mit seinem Parent verbindet
+        if v == s || isempty(e) || isnan(e) || e==0
+            parent(v) = 0; 
+            continue
+        end
+
+        uv = endNodes(e,:);
+
+        if uv(1) == v 
+            parent(v) = uv(2);
+        else 
+            parent(v) = uv(1);
+        end
+
     end
-     
+
+    chIdx = G.chIndices;
+    
+    for k = 1:numel(chIdx)
+        
+        u = chIdx(k);
+        senderId = G.nodeIds(u);     % Sensor-ID des Senders
+
+        fprintf('TotalCH.id = %s\n', mat2str([TotalCH.id]));
+        fprintf('senderId = %d\n', senderId);
+
+        if Sensors(senderId).E <= 0, continue; end
+    
+        while u ~= s
+            p = parent(u); 
+    
+            recvId = G.nodeIds(p);   % Sensor-ID des Empfängers (Parent)
+            fprintf('receiverId = %d\n', recvId);
+
+            Sensors = SendReceivePackets(Sensors, Model, senderId, 'Data', recvId);
+    
+            if Sensors(recvId).E <= 0, break; end 
+            u = p;           
+            senderId = recvId;
+        end
+    end
+
+
     % Any sensor node that is not part of a cluster head’s group 
     % sends its own data packet straight to the sink
     for i=1:n
