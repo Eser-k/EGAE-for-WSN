@@ -79,10 +79,10 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
+%%%%%%%%%%%%%%%%%% cluster with kMedoids  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+positions = createFeatureMatrix(Sensors,Model);
 kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+inertias = computeInertia(positions, kmax);
 
 % Visualize the inertia values
 figure('Name','Elbow','NumberTitle','off');
@@ -98,7 +98,7 @@ k_opt = findElbow(inertias);
 fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
 
 num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+cluster_labels = kmedoids(positions, k_opt);
 
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
