@@ -13,7 +13,7 @@ warning off all;
 %% Create sensor nodes, Set Parameters and Create Energy Model
 
 %%%%%%%%%%%%%%%% Initial Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n=100;                          % Number of Nodes in the field
+n=200;                          % Number of Nodes in the field
 [Area,Model]=setParameters(n);  % Set Parameters Sensors and Network
     
 %%%%%%%%%%%%%%%% Configuration of the Sensors %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -22,8 +22,7 @@ n=100;                          % Number of Nodes in the field
 % CreateRandomSen(Model,Area);  
 
 % Load sensor Location
-load Locations
-    
+load Locations    
 Sensors=ConfigureSensors(Model,n,X,Y);
     
 %%%%%%%%%%%%%%%%% Initialization of the parameters %%%%%%%%%%%%%%%%%%%%
@@ -79,28 +78,25 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
-kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+%%%%%%%%%%%%%%%%%% cluster with DBSCAN  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+positions = createFeatureMatrix(Sensors, Model);
 
-% Visualize the inertia values
-figure('Name','Elbow','NumberTitle','off');
-plot(1:kmax, inertias, '-o');
-xlabel('k');
-ylabel('Inertia');
-title('Elbow Curve');
-grid on;
+cluster_labels = dbscan(positions, 10, 4);
 
-% Determine the optimal number of clusters by 
-% finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+valid_idx = find(cluster_labels ~= -1);
+noise_idx = find(cluster_labels == -1);
 
-num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+for j = noise_idx'
+    diffs  = positions(valid_idx, :) - positions(j, :);
+    dists2 = sum(diffs.^2, 2);         
+    [~, minloc] = min(dists2);         
+    
+    cluster_labels(j) = cluster_labels(valid_idx(minloc));
+end
 
-% Generate a palette of distinct colors (one per cluster) 
+unique_ids = unique(cluster_labels);
+num_clusters = numel(unique_ids);
+
 cmap = jet(num_clusters);
 
 % Create a new figure window named “Sensor Network” 
@@ -327,8 +323,8 @@ for r=1:1:Model.rmax
     pTree = plot(Tree, ...
         'XData', G.pos(:,1), 'YData', G.pos(:,2), ...
         'Parent', axSim, ...
-        'EdgeColor', [0 0.5 1], 'LineWidth', 1.2);
-
+        'EdgeColor', [1 0.1 0.1], 'LineWidth', 1.8);
+    
     set(axSim, ...
     'XLim', [0 Model.Areax], ...
     'YLim', [0 Model.Areay], ...
@@ -337,7 +333,7 @@ for r=1:1:Model.rmax
     'DataAspectRatio', [1 1 1], ...      
     'PlotBoxAspectRatioMode', 'auto');
     
-    pause(1);
+    pause(0.2);
     
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -374,7 +370,6 @@ for r=1:1:Model.rmax
         senderId = G.nodeIds(u);     % Sensor-ID des Senders
 
         fprintf('TotalCH.id = %s\n', mat2str([TotalCH.id]));
-        fprintf('senderId = %d\n', senderId);
 
         if Sensors(senderId).E <= 0, continue; end
     
@@ -382,6 +377,8 @@ for r=1:1:Model.rmax
             p = parent(u); 
     
             recvId = G.nodeIds(p);   % Sensor-ID des Empfängers (Parent)
+            
+            fprintf('senderId = %d\n', senderId);
             fprintf('receiverId = %d\n', recvId);
 
             Sensors = SendReceivePackets(Sensors, Model, senderId, 'Data', recvId);

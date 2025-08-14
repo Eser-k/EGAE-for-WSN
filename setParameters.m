@@ -13,7 +13,7 @@ Area.x=n;
 Area.y=n;
 
 % Sink Motion pattern 
-Sinkx=0.5*Area.x;
+Sinkx=Area.x;
 Sinky=Sinkx;
 
 %%%%%%%%%%%%%%%%%%%%%%%%% Energy Model (all values in Joules)%%%%%%%%%%%
