@@ -22,7 +22,7 @@ n=200;                          % Number of Nodes in the field
 % CreateRandomSen(Model,Area);  
 
 % Load sensor Location
-load Locations
+load Sensornetzwerk1.mat
     
 Sensors=ConfigureSensors(Model,n,X,Y);
     
@@ -287,7 +287,7 @@ for r=1:1:Model.rmax
     end
 
     % Briefly pause so that each round’s links are visible before updating
-    pause(0.1);
+    pause(0.05);
     
 %%%%%%%%%%%%%%%%%%%%% steady-state phase %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % In the steady-state phase, each alive sensor sends its data 
@@ -315,7 +315,7 @@ for r=1:1:Model.rmax
     [i,j] = find(triu(isfinite(W),1));
     w = W(sub2ind([m m], i, j));
     
-    MG = graph(i, j, w);  % MATLAB Graphobject
+    MG = graph(i, j, w, m);  % MATLAB Graphobject
     
     s = G.sinkIndex;
     
@@ -337,7 +337,7 @@ for r=1:1:Model.rmax
     'DataAspectRatio', [1 1 1], ...      
     'PlotBoxAspectRatioMode', 'auto');
     
-    pause(0.2);
+    pause(0.05);
     
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -381,6 +381,12 @@ for r=1:1:Model.rmax
             p = parent(u); 
     
             recvId = G.nodeIds(p);   % Sensor-ID des Empfängers (Parent)
+            if Sensors(recvId).E <= 0 
+                recvId = n+1;
+                fprintf('Receiver has no Energy, send directly to sink \n');
+                Sensors = SendReceivePackets(Sensors, Model, senderId, 'Data', recvId);
+                break; 
+            end 
 
             fprintf('senderId = %d\n', senderId);
             fprintf('receiverId = %d\n', recvId);
@@ -388,6 +394,7 @@ for r=1:1:Model.rmax
             Sensors = SendReceivePackets(Sensors, Model, senderId, 'Data', recvId);
     
             if Sensors(recvId).E <= 0, break; end 
+
             u = p;           
             senderId = recvId;
         end
@@ -546,4 +553,4 @@ T = array2table( data_T, 'RowNames', metrics, ...
     'VariableNames', compose("Round %d", rounds));
 
 % Export the table to a CSV file
-writetable(T, 'stats_by_metric.csv', 'WriteRowNames', true);
+writetable(T, 'Versuch1_kMeans.csv', 'WriteRowNames', true);
