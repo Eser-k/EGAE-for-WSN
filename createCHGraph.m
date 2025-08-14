@@ -40,13 +40,7 @@ function G = createCHGraph(Sensors, Model, TotalCH)
             D(i,j) = dij;  
             D(j,i) = dij;
 
-            isSinkEdge = (i == sinkIdx) || (j == sinkIdx);
-
-            if isSinkEdge
-                eij = txCost(dij);                
-            else
-                eij = txCost(dij) + ERx;          
-            end
+            eij = txCost(dij) + ERx;
 
             W(i,j) = eij;
             W(j,i) = eij;

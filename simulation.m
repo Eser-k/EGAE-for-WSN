@@ -13,7 +13,7 @@ warning off all;
 %% Create sensor nodes, Set Parameters and Create Energy Model
 
 %%%%%%%%%%%%%%%% Initial Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n=100;                          % Number of Nodes in the field
+n=200;                          % Number of Nodes in the field
 [Area,Model]=setParameters(n);  % Set Parameters Sensors and Network
     
 %%%%%%%%%%%%%%%% Configuration of the Sensors %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -327,7 +327,7 @@ for r=1:1:Model.rmax
     pTree = plot(Tree, ...
         'XData', G.pos(:,1), 'YData', G.pos(:,2), ...
         'Parent', axSim, ...
-        'EdgeColor', [0 0.5 1], 'LineWidth', 1.2);
+        'EdgeColor',[1 0.1 0.1], 'LineWidth', 1.8);
 
     set(axSim, ...
     'XLim', [0 Model.Areax], ...
@@ -337,7 +337,7 @@ for r=1:1:Model.rmax
     'DataAspectRatio', [1 1 1], ...      
     'PlotBoxAspectRatioMode', 'auto');
     
-    pause(1);
+    pause(0.2);
     
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -374,7 +374,6 @@ for r=1:1:Model.rmax
         senderId = G.nodeIds(u);     % Sensor-ID des Senders
 
         fprintf('TotalCH.id = %s\n', mat2str([TotalCH.id]));
-        fprintf('senderId = %d\n', senderId);
 
         if Sensors(senderId).E <= 0, continue; end
     
@@ -382,6 +381,8 @@ for r=1:1:Model.rmax
             p = parent(u); 
     
             recvId = G.nodeIds(p);   % Sensor-ID des Empfängers (Parent)
+
+            fprintf('senderId = %d\n', senderId);
             fprintf('receiverId = %d\n', recvId);
 
             Sensors = SendReceivePackets(Sensors, Model, senderId, 'Data', recvId);
