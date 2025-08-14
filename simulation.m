@@ -79,26 +79,37 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
-kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+%%%%%%%%%%%%%%%%%% cluster with HDBSCAN  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+hdb = py.importlib.import_module('hdbscan');
+np  = py.importlib.import_module('numpy');
 
-% Visualize the inertia values
-figure('Name','Elbow','NumberTitle','off');
-plot(1:kmax, inertias, '-o');
-xlabel('k');
-ylabel('Inertia');
-title('Elbow Curve');
-grid on;
+positions = createFeatureMatrix(Sensors, Model);
+positions_py = np.array(positions);
 
-% Determine the optimal number of clusters by 
-% finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(4), 'min_samples', int32(4)));
+clusterer.fit(positions_py);
 
-num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+labels_py = py.getattr(clusterer, 'labels_');    
+labels_list = labels_py.tolist();                 
+labels_cell = cell(labels_list);                  
+cluster_labels = cellfun(@double, labels_cell);   
+cluster_labels = cluster_labels'; 
+
+valid_idx = find(cluster_labels ~= -1);
+noise_idx = find(cluster_labels == -1);
+
+for j = noise_idx'
+    diffs  = positions(valid_idx, :) - positions(j, :);
+    dists2 = sum(diffs.^2, 2);         
+    [~, minloc] = min(dists2);         
+    
+    cluster_labels(j) = cluster_labels(valid_idx(minloc));
+end
+
+cluster_labels = cluster_labels + 1;
+
+unique_ids = unique(cluster_labels);
+num_clusters = numel(unique_ids);
 
 % Generate a palette of distinct colors (one per cluster) 
 cmap = jet(num_clusters);
