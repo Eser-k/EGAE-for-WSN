@@ -22,7 +22,7 @@ n=100;                          % Number of Nodes in the field
 % CreateRandomSen(Model,Area);  
 
 % Load sensor Location
-load Locations
+load Sensornetzwerk1.mat
     
 Sensors=ConfigureSensors(Model,n,X,Y);
     
@@ -79,29 +79,38 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%Clustering with Mean-Shift %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 positions = createFeatureMatrix(Sensors,Model);
-kmax = int32(n/5);
-inertias = computeInertia(positions, kmax);
 
-% Visualize the inertia values
-figure('Name','Elbow','NumberTitle','off');
-plot(1:kmax, inertias, '-o');
-xlabel('k');
-ylabel('Inertia');
-title('Elbow Curve');
-grid on;
+positions = positions(1:n, :);
 
-% Determine the optimal number of clusters by 
-% finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+sklearn_cluster = py.importlib.import_module('sklearn.cluster');
+np = py.importlib.import_module('numpy');
 
-num_clusters = k_opt;
-cluster_labels = kmedoids(positions, k_opt);
+Xpy = np.array(positions);
 
-% Generate a palette of distinct colors (one per cluster) 
-cmap = jet(num_clusters);
+bw_py = sklearn_cluster.estimate_bandwidth( ...
+        Xpy, pyargs('quantile', 0.2, 'n_samples', int32(size(positions,1))) );
+
+bw = double(bw_py);
+
+ms = sklearn_cluster.MeanShift(pyargs('bandwidth', bw, 'bin_seeding', false, 'min_bin_freq', int32(1)));
+ms_fit = ms.fit(Xpy);
+
+labels_py = py.getattr(ms_fit, 'labels_');    
+labels_list = labels_py.tolist();                 
+labels_cell = cell(labels_list);                  
+cluster_labels = cellfun(@double, labels_cell);   
+cluster_labels = cluster_labels'; 
+
+cluster_labels = cluster_labels + 1;
+
+unique_ids = unique(cluster_labels);
+num_clusters = numel(unique_ids);
+
+fprintf('Mean-Shift: bw=%.4f, clusters=%d\n', bw, num_clusters);
+cmap = jet(max(num_clusters,1));
 
 % Create a new figure window named “Sensor Network” 
 simFig = figure('Name','Sensor Network','NumberTitle','off');
@@ -459,4 +468,4 @@ T = array2table( data_T, 'RowNames', metrics, ...
     'VariableNames', compose("Round %d", rounds));
 
 % Export the table to a CSV file
-writetable(T, 'stats_by_metric.csv', 'WriteRowNames', true);
+writetable(T, 'Versuch1_MeanShift.csv', 'WriteRowNames', true);
