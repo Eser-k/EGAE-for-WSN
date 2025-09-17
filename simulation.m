@@ -81,7 +81,7 @@ AliveSensors(1)= n;
 
 positions = createFeatureMatrix(Sensors, Model);
 
-cluster_labels = dbscan(positions, 10, 4);
+cluster_labels = dbscan(positions, 10, 5);
 
 valid_idx = find(cluster_labels ~= -1);
 noise_idx = find(cluster_labels == -1);
@@ -455,4 +455,4 @@ T = array2table( data_T, 'RowNames', metrics, ...
     'VariableNames', compose("Round %d", rounds));
 
 % Export the table to a CSV file
-writetable(T, 'stats_by_metric.csv', 'WriteRowNames', true);
+writetable(T, 'Versuch10_DBSCAN.csv', 'WriteRowNames', true);
