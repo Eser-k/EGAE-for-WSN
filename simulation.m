@@ -85,7 +85,7 @@ np  = py.importlib.import_module('numpy');
 positions = createFeatureMatrix(Sensors, Model);
 positions_py = np.array(positions);
 
-clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(4), 'min_samples', int32(4)));
+clusterer = hdb.HDBSCAN(pyargs('min_cluster_size', int32(8), 'min_samples', int32(2)));
 clusterer.fit(positions_py);
 
 labels_py = py.getattr(clusterer, 'labels_');    
@@ -468,4 +468,4 @@ T = array2table( data_T, 'RowNames', metrics, ...
     'VariableNames', compose("Round %d", rounds));
 
 % Export the table to a CSV file
-writetable(T, 'stats_by_metric.csv', 'WriteRowNames', true);
+writetable(T, 'Versuch10_HDBSCAN.csv', 'WriteRowNames', true);
