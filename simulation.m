@@ -22,7 +22,7 @@ n=100;                          % Number of Nodes in the field
 % CreateRandomSen(Model,Area);  
 
 % Load sensor Location
-load Locations
+load Sensornetzwerk1.mat
     
 Sensors=ConfigureSensors(Model,n,X,Y);
     
@@ -79,29 +79,65 @@ SumEnergyAllSensor(1) = initEnergy;
 alive = n;
 AliveSensors(1)= n;
 
-%%%%%%%%%%%%%%%%%% cluster with kMeans  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-positons = createFeatureMatrix(Sensors,Model);
-kmax = int32(n/5);
-inertias = computeInertia(positons, kmax);
+%%%%%%%%%%%%%%%%%% Clustering mit Affinity Propagation %%%%%%%%%%%%%%%%%%%
 
-% Visualize the inertia values
-figure('Name','Elbow','NumberTitle','off');
-plot(1:kmax, inertias, '-o');
-xlabel('k');
-ylabel('Inertia');
-title('Elbow Curve');
-grid on;
+positions = createFeatureMatrix(Sensors, Model);
+positions = positions(1:n, :);               % nur echte Sensorknoten
 
-% Determine the optimal number of clusters by 
-% finding the “elbow” in the inertia curve
-k_opt = findElbow(inertias);
-fprintf('Optimal number of clusters (Elbow): %d\n', k_opt);
+% --- Clusteranzahl grob steuern über 'preference' -----------------------
+% Ähnlichkeiten S = -||x - y||^2, 'preference' = Perzentil dieser Werte
+D2 = pdist2(positions, positions, 'euclidean').^2;
+S  = -D2;
+pref_quantile = 10;                           % 50 = Median; kleiner -> weniger, größer -> mehr Cluster
+preference    = prctile(S(:), pref_quantile);
 
-num_clusters = k_opt;
-[cluster_labels, centroids] = kmeans(positons, k_opt, 'Replicates',5, 'MaxIter',300);
+% --- Python: sklearn aufrufen -------------------------------------------
+sklearn_cluster = py.importlib.import_module('sklearn.cluster');
+np = py.importlib.import_module('numpy');
 
-% Generate a palette of distinct colors (one per cluster) 
-cmap = jet(num_clusters);
+Xpy = np.array(positions);
+ap  = sklearn_cluster.AffinityPropagation( ...
+        pyargs('affinity','euclidean', ...    % intern: -||x-y||^2
+               'damping', 0.9, ...           % 0.5–0.99, höher = stabiler
+               'preference', preference, ...
+               'random_state', int32(42), ...
+               'max_iter', int32(200)));
+
+ap_fit = ap.fit(Xpy);
+
+% --- Labels (0-basiert in sklearn) -> 1-basiert in MATLAB ---------------
+labels_py    = py.getattr(ap_fit, 'labels_');
+labels_list  = labels_py.tolist();
+labels_cell  = cell(labels_list);
+cluster_labels = cellfun(@double, labels_cell).';
+cluster_labels = cluster_labels + 1;
+
+% --- Exemplare (Repräsentanten / natürliche CH-Kandidaten) --------------
+cent_idx_py = py.getattr(ap_fit, 'cluster_centers_indices_');  % kann None sein
+if isequal(cent_idx_py, py.None)
+    exemplar_idx = [];    % keine stabilen Zentren gefunden
+else
+    cent_idx_list = cent_idx_py.tolist();
+    cent_idx_cell = cell(cent_idx_list);
+    exemplar_idx  = cellfun(@(x) double(x)+1, cent_idx_cell);  % 1-basiert
+end
+
+% --- Iterationszähler (nur Info) ----------------------------------------
+if isprop(ap_fit, 'n_iter_')
+    n_iter_py = py.getattr(ap_fit, 'n_iter_');
+    fprintf('AffinityPropagation: n_iter = %d\n', int32(n_iter_py));
+end
+
+% --- Anzahl Cluster & Colormap ------------------------------------------
+unique_ids   = unique(cluster_labels);
+num_clusters = numel(unique_ids);
+cmap         = jet(max(num_clusters,1));
+
+% --- Hinweis, falls keine Zentren erkannt wurden ------------------------
+if isempty(exemplar_idx)
+    warning(['AffinityPropagation hat keine Clusterzentren geliefert. ', ...
+             'Passe "damping" (z.B. 0.9) oder "pref_quantile" (z.B. 30/70) an.']);
+end
 
 % Create a new figure window named “Sensor Network” 
 simFig = figure('Name','Sensor Network','NumberTitle','off');
